@@ -5,8 +5,8 @@ Ce projet propose une solution innovante de gestion énergétique pour un quarti
 
 # Plan du Projet
 
-### 1. Simulation du Quartier : Configuration d'un micro-réseau (2 foyers producteurs, 2 foyers consommateurs).
-### 2. Exploration & Prétraitement : Analyse des données Kaggle et injection de variables solaires réalistes.
-### 3. Intelligence Prédictive : Comparaison de modèles ML pour anticiper la consommation à T+1.
-### 4. Sécurisation Blockchain : Développement de Smart Contracts pour automatiser et certifier les transferts.
+ 1. Simulation du Quartier : Configuration d'un micro-réseau (2 foyers producteurs, 2 foyers consommateurs).
+ 2. Exploration & Prétraitement : Analyse des données Kaggle et injection de variables solaires réalistes.
+ 3. Intelligence Prédictive : Comparaison de modèles ML pour anticiper la consommation à T+1.
+ 4. Sécurisation Blockchain : Développement de Smart Contracts pour automatiser et certifier les transferts.
 
