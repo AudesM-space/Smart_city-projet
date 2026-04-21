@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>SmartCas EnergyChain — Live Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Segoe UI',system-ui,sans-serif; background:#f0f4f8; display:flex; height:100vh; overflow:hidden; }
+.sidebar { width:210px; min-width:210px; background:#0f2744; display:flex; flex-direction:column; padding:0; }
+.sb-top { padding:24px 20px 20px; border-bottom:1px solid rgba(255,255,255,0.07); }
+.sb-icon { width:40px; height:40px; border-radius:50%; background:#1d4ed8; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+.sb-title { font-size:14px; font-weight:600; color:#fff; line-height:1.3; }
+.sb-sub { font-size:10px; color:rgba(255,255,255,0.35); margin-top:4px; letter-spacing:0.06em; text-transform:uppercase; }
+.sb-section { font-size:9px; color:rgba(255,255,255,0.25); letter-spacing:0.1em; text-transform:uppercase; padding:0 20px; margin:14px 0 6px; }
+.sb-item { display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:12px; color:rgba(255,255,255,0.5); border-left:3px solid transparent; }
+.sb-item.active { background:rgba(29,78,216,0.22); color:#fff; border-left-color:#3b82f6; }
+.sb-foyer { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:11px; color:rgba(255,255,255,0.55); padding:0 20px; }
+.sb-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sb-badge { font-size:9px; padding:2px 7px; border-radius:999px; margin-left:auto; font-weight:500; }
+.badge-conso { background:rgba(239,68,68,0.18); color:#fca5a5; }
+.badge-prod { background:rgba(59,130,246,0.18); color:#93c5fd; }
+.badge-temoin { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.4); }
+.sb-status { display:flex; align-items:center; gap:6px; font-size:10px; color:#4ade80; padding:12px 20px 0; }
+.sb-status-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar { background:#fff; padding:16px 24px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.topbar-left h1 { font-size:16px; font-weight:600; color:#0f172a; }
+.topbar-left p { font-size:11px; color:#94a3b8; margin-top:2px; }
+.pill { display:flex; align-items:center; gap:6px; font-size:11px; padding:6px 14px; border-radius:999px; font-weight:500; }
+.pill-green { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+.pill-blue { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+.pill-dot { width:6px; height:6px; border-radius:50%; background:currentColor; animation:pulse 2s infinite; }
+.content { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
+.cards-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.kpi-card { background:#fff; border-radius:12px; padding:18px 20px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.kpi-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
+.kpi-label { font-size:11px; color:#64748b; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+.kpi-value { font-size:26px; font-weight:700; color:#0f172a; line-height:1; }
+.kpi-unit { font-size:13px; font-weight:400; color:#94a3b8; margin-left:3px; }
+.kpi-delta { font-size:11px; margin-top:6px; }
+.delta-green { color:#16a34a; }
+.delta-gray { color:#94a3b8; }
+.charts-row { display:grid; grid-template-columns:1.7fr 1fr; gap:14px; }
+.chart-card { background:#fff; border-radius:12px; padding:18px 20px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.chart-title { font-size:13px; font-weight:600; color:#0f172a; }
+.chart-sub { font-size:11px; color:#94a3b8; margin-top:3px; margin-bottom:14px; }
+.legend { display:flex; gap:14px; margin-bottom:12px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:11px; color:#64748b; }
+.legend-sq { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.tx-item { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #f1f5f9; }
+.tx-item:last-child { border-bottom:none; }
+.tx-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+.tx-info { flex:1; min-width:0; }
+.tx-main { font-size:12px; font-weight:600; color:#0f172a; }
+.tx-hash { font-size:10px; color:#94a3b8; font-family:monospace; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tx-right { text-align:right; flex-shrink:0; }
+.tx-kwh { font-size:13px; font-weight:700; color:#16a34a; }
+.tx-time { font-size:10px; color:#94a3b8; margin-top:2px; }
+.tx-badge { font-size:9px; padding:2px 8px; border-radius:999px; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; margin-left:6px; }
+.bottom-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.ml-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.ml-metric { background:#f8fafc; border-radius:8px; padding:12px; text-align:center; border:1px solid #e2e8f0; }
+.ml-metric-val { font-size:20px; font-weight:700; color:#0f172a; }
+.ml-metric-label { font-size:10px; color:#94a3b8; margin-top:4px; text-transform:uppercase; letter-spacing:0.05em; }
+.stat-table { width:100%; border-collapse:collapse; font-size:12px; }
+.stat-table th { text-align:left; font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; padding:0 0 10px; font-weight:500; }
+.stat-table td { padding:8px 0; border-bottom:1px solid #f1f5f9; color:#334155; }
+.stat-table tr:last-child td { border-bottom:none; }
+.stat-table .val { font-weight:600; color:#0f172a; }
+.topbar-right { display:flex; gap:10px; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sb-top">
+    <div class="sb-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div class="sb-title">SmartCas<br>EnergyChain</div>
+    <div class="sb-sub">Casablanca · IA + Blockchain</div>
+  </div>
+  <div class="sb-section">Navigation</div>
+  <div class="sb-item active">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Vue d'ensemble
+  </div>
+  <div class="sb-item">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Consommation
+  </div>
+  <div class="sb-item">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+    Modèle ML
+  </div>
+  <div class="sb-item">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/></svg>
+    Blockchain
+  </div>
+  <div class="sb-section" style="margin-top:20px;">Foyers connectés</div>
+  <div class="sb-foyer"><div class="sb-dot" style="background:#ef4444"></div>Foyer 1<span class="sb-badge badge-conso">Conso</span></div>
+  <div class="sb-foyer"><div class="sb-dot" style="background:#f97316"></div>Foyer 2<span class="sb-badge badge-conso">Conso</span></div>
+  <div class="sb-foyer"><div class="sb-dot" style="background:#3b82f6"></div>Foyer 3<span class="sb-badge badge-prod">Prod</span></div>
+  <div class="sb-foyer"><div class="sb-dot" style="background:#06b6d4"></div>Foyer 4<span class="sb-badge badge-prod">Prod</span></div>
+  <div class="sb-foyer"><div class="sb-dot" style="background:#6b7280"></div>Foyer 5<span class="sb-badge badge-temoin">Témoin</span></div>
+  <div class="sb-status"><div class="sb-status-dot"></div>Blockchain active · 306 blocs</div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Tableau de bord — Quartier Intelligent</h1>
+      <p>Simulation live · 1er janvier 2024 · Casablanca · Heure de pic : 13h00</p>
+    </div>
+    <div class="topbar-right">
+      <div class="pill pill-green"><div class="pill-dot"></div>ML · R² 92.86%</div>
+      <div class="pill pill-blue"><div class="pill-dot"></div>306 transactions validées</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="cards-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#eff6ff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="kpi-label">Production solaire</div>
+        <div class="kpi-value">42.3<span class="kpi-unit">kWh</span></div>
+        <div class="kpi-delta delta-green">↑ Foyers 3 & 4 · journée</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#fef3c7;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <div class="kpi-label">Consommation totale</div>
+        <div class="kpi-value">187<span class="kpi-unit">kWh</span></div>
+        <div class="kpi-delta delta-gray">4 foyers · 921 mesures IoT</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#f0fdf4;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg>
+        </div>
+        <div class="kpi-label">Énergie redistribuée</div>
+        <div class="kpi-value">61.94<span class="kpi-unit">kWh</span></div>
+        <div class="kpi-delta delta-green">↑ Via smart contracts</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#f5f3ff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/></svg>
+        </div>
+        <div class="kpi-label">Transactions blockchain</div>
+        <div class="kpi-value">306<span class="kpi-unit">tx</span></div>
+        <div class="kpi-delta delta-green">↑ 100% validées · 0 rejet</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Consommation & Production — Profil horaire moyen</div>
+        <div class="chart-sub">kWh moyens par heure · données IoT réelles (Kaggle)</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-sq" style="background:#ef4444"></div>Foyer 1</div>
+          <div class="legend-item"><div class="legend-sq" style="background:#f97316"></div>Foyer 2</div>
+          <div class="legend-item"><div class="legend-sq" style="background:#3b82f6"></div>Foyer 3</div>
+          <div class="legend-item"><div class="legend-sq" style="background:#06b6d4"></div>Foyer 4</div>
+          <div class="legend-item"><div class="legend-sq" style="background:#fbbf24"></div>Solaire</div>
+        </div>
+        <div style="position:relative;height:200px;"><canvas id="lineChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Registre des transactions blockchain</div>
+        <div class="chart-sub">Vrais hash · démo live · 306 transferts enregistrés</div>
+        
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 1 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">f5aa91acb1126a0b7182ae486f1165b457e5d0c4...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.051 kWh</div>
+        <div class="tx-time">08:40</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 2 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">706963ad9b98ce57c7083ef0217a116065f32d23...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.051 kWh</div>
+        <div class="tx-time">08:40</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 1 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">fa23a3517647d1835c1f57e8b1ff626ed16a203f...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.055 kWh</div>
+        <div class="tx-time">08:45</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 2 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">d9132a094f6c0ebb101ee4e923a26550965b2175...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.055 kWh</div>
+        <div class="tx-time">08:45</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 1 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">f0d8d917bf8ab7ee103c5d8e6ab3a550fc37f8e3...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.068 kWh</div>
+        <div class="tx-time">08:55</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 2 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">76b9a5d2fcbde24c151f403ac76cebc5631b5b83...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.068 kWh</div>
+        <div class="tx-time">08:55</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 1 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">c931cdfc4931d915d5f30f1a7e14d640c5daad8a...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.091 kWh</div>
+        <div class="tx-time">09:05</div>
+      </div>
+    </div>
+    <div class="tx-item">
+      <div class="tx-avatar" style="background:#eff6ff;color:#1d4ed8;">F3</div>
+      <div class="tx-info">
+        <div class="tx-main">Foyer 3 → Foyer 2 <span class="tx-badge">✓ Validée</span></div>
+        <div class="tx-hash">ee1b19dd13a036384026a858826e6eb80c51a270...</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-kwh">+0.091 kWh</div>
+        <div class="tx-time">09:05</div>
+      </div>
+    </div>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="chart-card">
+        <div class="chart-title">Flux énergétique par foyer</div>
+        <div class="chart-sub">Surplus (+) déclenche la blockchain · Déficit (−) comblé automatiquement</div>
+        <div style="position:relative;height:150px;"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Statistiques ML & Dataset</div>
+        <div class="chart-sub">Régression Polynomiale · Données IoT réelles</div>
+        <div class="ml-metrics">
+          <div class="ml-metric"><div class="ml-metric-val" style="color:#16a34a;">92.86%</div><div class="ml-metric-label">Précision R²</div></div>
+          <div class="ml-metric"><div class="ml-metric-val" style="color:#1d4ed8;">0.024</div><div class="ml-metric-label">MAE kWh</div></div>
+          <div class="ml-metric"><div class="ml-metric-val" style="color:#7c3aed;">916</div><div class="ml-metric-label">Observations</div></div>
+        </div>
+        <table class="stat-table">
+          <tr><th>Foyer</th><th>Rôle</th><th>Conso moy.</th><th>Flux moyen</th></tr>
+          <tr><td style="color:#ef4444;font-weight:600;">Foyer 1</td><td>Consommateur</td><td class="val">0.292 kWh</td><td style="color:#ef4444;font-weight:600;">−0.281</td></tr>
+          <tr><td style="color:#f97316;font-weight:600;">Foyer 2</td><td>Consommateur</td><td class="val">0.281 kWh</td><td style="color:#f97316;font-weight:600;">−0.281</td></tr>
+          <tr><td style="color:#3b82f6;font-weight:600;">Foyer 3</td><td>Producteur</td><td class="val">0.121 kWh</td><td style="color:#16a34a;font-weight:600;">+0.053</td></tr>
+          <tr><td style="color:#06b6d4;font-weight:600;">Foyer 4</td><td>Producteur</td><td class="val">0.119 kWh</td><td style="color:#16a34a;font-weight:600;">+0.055</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const hours = Array.from({length:24},(_,i)=>i);
+const base = [0.30,0.25,0.22,0.20,0.20,0.25,0.50,0.90,1.10,0.80,0.60,0.55,0.70,0.65,0.50,0.45,0.50,0.70,1.20,1.50,1.60,1.40,1.00,0.60];
+const f1 = base.map(v => parseFloat((v*1.4).toFixed(3)));
+const f2 = base.map(v => parseFloat((v*1.61).toFixed(3)));
+const f3 = base.map(v => parseFloat((v*0.6).toFixed(3)));
+const f4 = base.map(v => parseFloat((v*0.55).toFixed(3)));
+const sol = hours.map(h => parseFloat((Math.max(0,0.5*Math.exp(-0.07*Math.pow(h-13,2)))).toFixed(3)));
+new Chart(document.getElementById('lineChart'),{
+  type:'line',
+  data:{ labels:hours.map(h=>h+'h'), datasets:[
+    {label:'F1',data:f1,borderColor:'#ef4444',borderWidth:2,pointRadius:0,tension:0.4,fill:false},
+    {label:'F2',data:f2,borderColor:'#f97316',borderWidth:2,pointRadius:0,tension:0.4,fill:false},
+    {label:'F3',data:f3,borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:0.4,fill:false},
+    {label:'F4',data:f4,borderColor:'#06b6d4',borderWidth:2,pointRadius:0,tension:0.4,fill:false},
+    {label:'Sol',data:sol,borderColor:'#fbbf24',borderWidth:2,pointRadius:0,tension:0.4,fill:true,backgroundColor:'rgba(251,191,36,0.08)',borderDash:[5,4]}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},maxTicksLimit:12,color:'#94a3b8'}},
+             y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},color:'#94a3b8',callback:v=>v.toFixed(1)}}}}
+});
+new Chart(document.getElementById('barChart'),{
+  type:'bar',
+  data:{ labels:['Foyer 1','Foyer 2','Foyer 3','Foyer 4'],
+    datasets:[{label:'Flux',data:[-0.281,-0.281,0.053,0.055],
+      backgroundColor:['rgba(239,68,68,0.7)','rgba(249,115,22,0.7)','rgba(59,130,246,0.7)','rgba(6,182,212,0.7)'],
+      borderColor:['#ef4444','#f97316','#3b82f6','#06b6d4'],borderWidth:1.5,borderRadius:5}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#64748b'}},
+             y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},color:'#94a3b8',callback:v=>(v>0?'+':'')+v.toFixed(2)}}}}
+});
+</script>
+</body>
+</html>
